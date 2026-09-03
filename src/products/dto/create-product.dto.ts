@@ -25,7 +25,7 @@ export class CreateProductDto {
     @IsNumber({}, { message: 'Price must be a number' })
     @IsPositive({ message: 'Price must be a positive number' })
     @IsNotEmpty({
-        message: 'Name is required',
+        message: 'Price is required',
     })
     price: number;
 
