@@ -1,16 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 export interface Product {
   id: number;
   name: string;
-  description: string;
+  description?: string;
   price: number;
-}
-
-export interface CreateProductDto {
-  name: string;
-  description: string;
-  price: number;
+  category: string;
 }
 
 @Injectable()
@@ -53,6 +50,22 @@ export class ProductsService {
     this.products.push(product);
     return product;
   }
+
+
+  /**
+ * Update a product by ID
+ * @param id - The product ID
+ * @param updateProductDto - Product update data
+ * @returns The updated product
+ */
+update(id: number, updateProductDto: UpdateProductDto): Product {
+  const product = this.findOne(id);
+
+  Object.assign(product, updateProductDto);
+
+  return product;
+}
+
 
   /**
    * Remove a product by ID
