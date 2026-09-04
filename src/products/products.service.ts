@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -43,6 +43,18 @@ export class ProductsService {
    * @returns The created product
    */
   create(createProductDto: CreateProductDto): Product {
+
+    const existingProduct = this.products.find(
+      (product) =>
+        product.name.toLowerCase() ===
+        createProductDto.name.toLowerCase(),
+    );
+
+    if (existingProduct) {
+      throw new ConflictException(
+        `Product with name "${createProductDto.name}" already exists`,
+      );
+    }
     const product: Product = {
       id: this.nextId++,
       ...createProductDto,
@@ -58,13 +70,13 @@ export class ProductsService {
  * @param updateProductDto - Product update data
  * @returns The updated product
  */
-update(id: number, updateProductDto: UpdateProductDto): Product {
-  const product = this.findOne(id);
+  update(id: number, updateProductDto: UpdateProductDto): Product {
+    const product = this.findOne(id);
 
-  Object.assign(product, updateProductDto);
+    Object.assign(product, updateProductDto);
 
-  return product;
-}
+    return product;
+  }
 
 
   /**
@@ -72,11 +84,14 @@ update(id: number, updateProductDto: UpdateProductDto): Product {
    * @param id - The product ID
    * @throws NotFoundException if product does not exist
    */
-  remove(id: number): void {
+  remove(id: number) {
     const index = this.products.findIndex((p) => p.id === id);
     if (index === -1) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
     this.products.splice(index, 1);
+    return {
+      message: 'Product deleted successfully',
+    };
   }
 }
