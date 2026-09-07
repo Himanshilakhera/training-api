@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -12,6 +12,8 @@ export interface Product {
 
 @Injectable()
 export class ProductsService {
+
+  private readonly logger = new Logger(ProductsService.name);
   private products: Product[] = [];
   private nextId: number = 1;
 
@@ -60,6 +62,7 @@ export class ProductsService {
       ...createProductDto,
     };
     this.products.push(product);
+    this.logger.log(`Product created: ${product.name}`);
     return product;
   }
 
@@ -90,6 +93,7 @@ export class ProductsService {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
     this.products.splice(index, 1);
+    this.logger.log(`Product deleted: ${id}`);
     return {
       message: 'Product deleted successfully',
     };
