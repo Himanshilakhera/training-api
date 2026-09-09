@@ -88,9 +88,14 @@ export class ProductsService {
    * @throws NotFoundException if product does not exist
    */
   async remove(id: string): Promise<{ message: string }> {
-    const product = await this.findOne(id);
+    // const product = await this.findOne(id);
 
-    await this.productsRepository.remove(product);
+    // await this.productsRepository.remove(product);
+    const result = await this.productsRepository.delete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException('Product not found');
+    }
     this.logger.log(`Product deleted: ${id}`);
     return {
       message: 'Product deleted successfully',
