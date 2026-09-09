@@ -1,28 +1,30 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { CreateProductDto } from './dto/create-product.dto';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-
-export interface Product {
-  id: number;
-  name: string;
-  description?: string;
-  price: number;
-  category: string;
-}
+import { Product } from './entities/product.entity';
 
 @Injectable()
 export class ProductsService {
+  constructor(
+    @InjectRepository(Product)
+    private readonly productsRepository: Repository<Product>,
+  ) { }
 
   private readonly logger = new Logger(ProductsService.name);
-  private products: Product[] = [];
-  private nextId: number = 1;
 
   /**
    * Retrieve all products
    * @returns Array of all products
    */
-  findAll(): Product[] {
-    return this.products;
+  async findAll(): Promise<Product[]> {
+    return this.productsRepository.find();
   }
 
   /**
@@ -31,8 +33,8 @@ export class ProductsService {
    * @returns The product object
    * @throws NotFoundException if product does not exist
    */
-  findOne(id: number): Product {
-    const product = this.products.find((p) => p.id === id);
+  async findOne(id: string): Promise<Product> {
+    const product = await this.productsRepository.findOneBy({ id });
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
@@ -44,26 +46,21 @@ export class ProductsService {
    * @param createProductDto - Product creation data
    * @returns The created product
    */
-  create(createProductDto: CreateProductDto): Product {
-
-    const existingProduct = this.products.find(
-      (product) =>
-        product.name.toLowerCase() ===
-        createProductDto.name.toLowerCase(),
-    );
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const existingProduct = await this.productsRepository.findOneBy({
+      name: createProductDto.name,
+    });
 
     if (existingProduct) {
       throw new ConflictException(
         `Product with name "${createProductDto.name}" already exists`,
       );
     }
-    const product: Product = {
-      id: this.nextId++,
-      ...createProductDto,
-    };
-    this.products.push(product);
-    this.logger.log(`Product created: ${product.name}`);
-    return product;
+    const product = this.productsRepository.create(createProductDto);
+    const savedProduct = await this.productsRepository.save(product);
+
+    this.logger.log(`Product created: ${savedProduct.name}`);
+    return savedProduct;
   }
 
 
@@ -73,12 +70,15 @@ export class ProductsService {
  * @param updateProductDto - Product update data
  * @returns The updated product
  */
-  update(id: number, updateProductDto: UpdateProductDto): Product {
-    const product = this.findOne(id);
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    const product = await this.findOne(id);
 
     Object.assign(product, updateProductDto);
 
-    return product;
+    return this.productsRepository.save(product);
   }
 
 
@@ -87,12 +87,10 @@ export class ProductsService {
    * @param id - The product ID
    * @throws NotFoundException if product does not exist
    */
-  remove(id: number) {
-    const index = this.products.findIndex((p) => p.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
-    }
-    this.products.splice(index, 1);
+  async remove(id: string): Promise<{ message: string }> {
+    const product = await this.findOne(id);
+
+    await this.productsRepository.remove(product);
     this.logger.log(`Product deleted: ${id}`);
     return {
       message: 'Product deleted successfully',

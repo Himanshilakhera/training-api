@@ -36,4 +36,8 @@ export class CreateProductDto {
     @IsEnum(ProductCategory)
     @IsNotEmpty()
     category: ProductCategory;
+
+    @Type(() => Number)
+    @IsOptional()
+    stock?: number;
 }
