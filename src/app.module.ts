@@ -6,6 +6,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TasksModule } from './tasks/tasks.module';
 import Joi from 'joi';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CategoriesModule } from './categories/categories.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
     ProductsModule,
     TasksModule,
+    CategoriesModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

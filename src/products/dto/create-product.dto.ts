@@ -1,19 +1,13 @@
 import { Type } from 'class-transformer';
 import {
-    IsEnum,
     IsNotEmpty,
     IsNumber,
     IsOptional,
     IsPositive,
     IsString,
+    IsUUID,
     MinLength,
 } from 'class-validator';
-
-export enum ProductCategory {
-    ELECTRONICS = 'ELECTRONICS',
-    CLOTHING = 'CLOTHING',
-    GROCERY = 'GROCERY',
-}
 
 export class CreateProductDto {
     @IsString({ message: 'Name must be a string' })
@@ -33,9 +27,9 @@ export class CreateProductDto {
     @IsOptional()
     description?: string;
 
-    @IsEnum(ProductCategory)
-    @IsNotEmpty()
-    category: ProductCategory;
+    @IsUUID()
+    @IsOptional()
+    categoryId?: string;
 
     @Type(() => Number)
     @IsOptional()

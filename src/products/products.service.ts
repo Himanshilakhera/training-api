@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Category } from '../categories/entities/category.entity';
 import { Product } from './entities/product.entity';
 
 @Injectable()
@@ -16,6 +17,8 @@ export class ProductsService {
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
   ) { }
+  @InjectRepository(Category)
+  private categoryRepository: Repository<Category>
 
   private readonly logger = new Logger(ProductsService.name);
 
@@ -24,8 +27,13 @@ export class ProductsService {
    * @returns Array of all products
    */
   async findAll(): Promise<Product[]> {
-    return this.productsRepository.find();
+    return this.productsRepository.find({
+      relations: {
+        category: true,
+      },
+    });
   }
+
 
   /**
    * Retrieve a product by ID
@@ -56,7 +64,24 @@ export class ProductsService {
         `Product with name "${createProductDto.name}" already exists`,
       );
     }
-    const product = this.productsRepository.create(createProductDto);
+    const { categoryId, ...productData } = createProductDto;
+
+    let category;
+
+    if (categoryId) {
+      category = await this.categoryRepository.findOne({
+        where: { id: categoryId },
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+    }
+
+    const product = this.productsRepository.create({
+      ...productData,
+      category: { id: categoryId },
+    });
     const savedProduct = await this.productsRepository.save(product);
 
     this.logger.log(`Product created: ${savedProduct.name}`);
@@ -76,7 +101,12 @@ export class ProductsService {
   ): Promise<Product> {
     const product = await this.findOne(id);
 
-    Object.assign(product, updateProductDto);
+    const { categoryId, ...productData } = updateProductDto;
+
+    Object.assign(product, productData);
+    if (categoryId) {
+      product.category = { id: categoryId } as Category;
+    }
 
     return this.productsRepository.save(product);
   }

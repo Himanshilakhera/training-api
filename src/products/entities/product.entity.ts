@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Category } from '../../categories/entities/category.entity';
 
 @Entity('products')
 export class Product {
@@ -23,8 +26,12 @@ export class Product {
   @Column({ type: 'int', unsigned: true, default: 0 })
   stock: number;
 
-  @Column({ type: 'varchar', length: 50 })
-  category: string;
+  @ManyToOne(() => Category, (category) => category.products, {
+  nullable: true,
+  onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'category_id' })
+  category: Category;
 
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
