@@ -4,10 +4,12 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
+import { OrderItem } from '../../orders/entities/order-item.entity';
 
 @Entity('products')
 export class Product {
@@ -32,6 +34,9 @@ export class Product {
   })
   @JoinColumn({ name: 'category_id' })
   category: Category;
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
+  orderItems: OrderItem[];
 
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;

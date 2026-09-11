@@ -8,6 +8,7 @@ import Joi from 'joi';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CategoriesModule } from './categories/categories.module';
 import { UsersModule } from './users/users.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { UsersModule } from './users/users.module';
         database: configService.getOrThrow<string>('DB_NAME'),
 
         autoLoadEntities: true,
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        // synchronize: configService.get<string>('NODE_ENV') !== 'production',
+         synchronize: false,
       }),
     }),
 
@@ -50,6 +52,7 @@ import { UsersModule } from './users/users.module';
     TasksModule,
     CategoriesModule,
     UsersModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
