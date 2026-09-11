@@ -1,7 +1,6 @@
 import {
-    Column,
+  Column,
   Entity,
-  JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -12,17 +11,15 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
- 
+
   @Column({ unique: true })
   email: string;
 
   @Column()
   name: string;
 
-  @OneToOne(() => Profile, {
+  @OneToOne(() => Profile, (profile) => profile.user, {
     cascade: true,
-    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'profile_id' })
   profile: Profile;
 }
