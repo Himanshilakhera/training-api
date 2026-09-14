@@ -13,8 +13,12 @@ import { CategoriesService } from './categories.service';
 
 @Controller('categories')
 export class CategoriesController {
-	constructor(private readonly categoriesService: CategoriesService) {}
+	constructor(private readonly categoriesService: CategoriesService) { }
 
+	@Get()
+	findAll(): Promise<Category[]> {
+		return this.categoriesService.findAll();
+	}
 	@Post()
 	create(@Body() createCategoryDto: CreateCategoryDto): Promise<Category> {
 		return this.categoriesService.create(createCategoryDto);

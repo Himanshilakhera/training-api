@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -8,6 +9,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import {
+  FilterProductsDto,
+  ProductSortBy,
+} from './dto/filter-products.dto';
 import { Category } from '../categories/entities/category.entity';
 import { Product } from './entities/product.entity';
 
@@ -16,22 +21,84 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productsRepository: Repository<Product>,
+
+    @InjectRepository(Category)
+    private categoryRepository: Repository<Category>
   ) { }
-  @InjectRepository(Category)
-  private categoryRepository: Repository<Category>
 
   private readonly logger = new Logger(ProductsService.name);
 
   /**
-   * Retrieve all products
-   * @returns Array of all products
+   * Retrieve filtered products with pagination.
    */
-  async findAll(): Promise<Product[]> {
-    return this.productsRepository.find({
-      relations: {
-        category: true,
+  async findAll(filter: FilterProductsDto): Promise<{
+    items: Product[];
+    meta: {
+      totalItems: number;
+      itemCount: number;
+      itemsPerPage: number;
+      totalPages: number;
+      currentPage: number;
+    };
+  }> {
+    const {
+      page,
+      limit,
+      search,
+      categoryId,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder,
+    } = filter;
+    const sortColumn: Record<ProductSortBy, string> = {
+      [ProductSortBy.PRICE]: 'product.price',
+      [ProductSortBy.CREATED_AT]: 'product.createdAt',
+      [ProductSortBy.NAME]: 'product.name',
+    };
+    const orderByColumn = sortColumn[sortBy];
+
+    if (!orderByColumn) {
+      throw new BadRequestException('Invalid sortBy value');
+    }
+
+    const queryBuilder = this.productsRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(LOWER(product.name) LIKE LOWER(:search) OR LOWER(product.description) LIKE LOWER(:search))',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (categoryId) {
+      queryBuilder.andWhere('category.id = :categoryId', { categoryId });
+    }
+    if (minPrice !== undefined) {
+      queryBuilder.andWhere('product.price >= :minPrice', { minPrice });
+    }
+    if (maxPrice !== undefined) {
+      queryBuilder.andWhere('product.price <= :maxPrice', { maxPrice });
+    }
+
+    const [items, total] = await queryBuilder
+      .orderBy(orderByColumn, sortOrder)
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items,
+      meta: {
+        totalItems: total,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
       },
-    });
+    };
   }
 
 

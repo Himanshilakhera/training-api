@@ -1,7 +1,17 @@
-import { Controller, Get, Post, Delete, Param, Body, Patch } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { FilterProductsDto } from './dto/filter-products.dto';
 import type { Product } from './entities/product.entity';
 
 @Controller('products')
@@ -14,8 +24,8 @@ export class ProductsController {
    * @returns Array of all products
    */
   @Get()
-  async findAll(): Promise<Product[]> {
-    return this.productsService.findAll();
+  async findAll(@Query() filterDto: FilterProductsDto) {
+    return this.productsService.findAll(filterDto);
   }
 
   /**

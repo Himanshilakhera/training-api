@@ -13,7 +13,11 @@ export class CategoriesService {
 	constructor(
 		@InjectRepository(Category)
 		private readonly categoriesRepository: Repository<Category>,
-	) {}
+	) { }
+
+	async findAll(): Promise<Category[]> {
+		return this.categoriesRepository.find();
+	}
 
 	async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
 		const existingCategory = await this.categoriesRepository.findOneBy({

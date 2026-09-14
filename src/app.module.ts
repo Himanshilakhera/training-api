@@ -45,6 +45,7 @@ import { OrdersModule } from './orders/orders.module';
         autoLoadEntities: true,
         // synchronize: configService.get<string>('NODE_ENV') !== 'production',
          synchronize: false,
+         logging: ['query', 'error'],
       }),
     }),
 
