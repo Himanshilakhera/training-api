@@ -1,9 +1,9 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Product } from '../products/entities/product.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderItem } from './entities/order-item.entity';
@@ -12,57 +12,86 @@ import { Order } from './entities/order.entity';
 @Injectable()
 export class OrdersService {
   constructor(
-    @InjectRepository(Order)
-    private readonly ordersRepository: Repository<Order>,
-    @InjectRepository(OrderItem)
-    private readonly orderItemsRepository: Repository<OrderItem>,
-    @InjectRepository(Product)
-    private readonly productsRepository: Repository<Product>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
+  async createOrder(dto: CreateOrderDto): Promise<Order> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    let transactionStarted = false;
 
-    const productIds = createOrderDto.items.map((item) => item.productId);
-    const products = await this.productsRepository.findBy({
-      id: In(productIds),
-    });
-    const productsById = new Map(
-      products.map((product) => [product.id, product]),
-    );
-    const missingProductIds = productIds.filter(
-      (productId) => !productsById.has(productId),
-    );
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      transactionStarted = true;
 
-    if (missingProductIds.length > 0) {
-      throw new NotFoundException(
-        `Products not found: ${missingProductIds.join(', ')}`,
-      );
-    }
-
-    const orderItems = createOrderDto.items.map((item) => {
-      const product = productsById.get(item.productId);
-      if (!product) {
-        throw new NotFoundException(`Product ${item.productId} not found`);
+      const quantitiesByProductId = new Map<string, number>();
+      for (const item of dto.items) {
+        quantitiesByProductId.set(
+          item.productId,
+          (quantitiesByProductId.get(item.productId) ?? 0) + item.quantity,
+        );
       }
 
-      return this.orderItemsRepository.create({
-        product,
-        quantity: item.quantity,
-        unitPrice: Number(product.price),
+      const orderItemsData: Array<{
+        product: Product;
+        quantity: number;
+        unitPrice: number;
+      }> = [];
+      let totalAmount = 0;
+
+      for (const [productId, quantity] of quantitiesByProductId) {
+        const product = await queryRunner.manager.findOne(Product, {
+          where: { id: productId },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!product) {
+          throw new NotFoundException(`Product ${productId} not found`);
+        }
+
+        if (product.stock < quantity) {
+          throw new BadRequestException(
+            `Insufficient stock for product ${product.name}`,
+          );
+        }
+
+        product.stock -= quantity;
+        await queryRunner.manager.save(Product, product);
+
+        const unitPrice = Number(product.price);
+        totalAmount += quantity * unitPrice;
+        orderItemsData.push({ product, quantity, unitPrice });
+      }
+
+      const order = queryRunner.manager.create(Order, {
+        status: 'PENDING',
+        totalAmount: Number(totalAmount.toFixed(2)),
       });
-    });
+      const savedOrder = await queryRunner.manager.save(Order, order);
 
-    const totalAmount = Number(
-      orderItems
-        .reduce((total, item) => total + item.quantity * Number(item.unitPrice), 0)
-        .toFixed(2),
-    );
-    const order = this.ordersRepository.create({
-      status: 'PENDING',
-      totalAmount,
-      items: orderItems,
-    });
+      const orderItems = orderItemsData.map((item) =>
+        queryRunner.manager.create(OrderItem, {
+          order: savedOrder,
+          product: item.product,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }),
+      );
+      const savedOrderItems = await queryRunner.manager.save(
+        OrderItem,
+        orderItems,
+      );
 
-    return this.ordersRepository.save(order);
+      savedOrder.items = savedOrderItems;
+      await queryRunner.commitTransaction();
+      return savedOrder;
+    } catch (error) {
+      if (transactionStarted) {
+        await queryRunner.rollbackTransaction();
+      }
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

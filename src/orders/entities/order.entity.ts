@@ -1,9 +1,11 @@
 import {
     Column,
+    CreateDateColumn,
     Entity,
     ManyToOne,
     OneToMany,
     PrimaryGeneratedColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { OrderItem } from './order-item.entity';
 import { User } from '../../users/entities/user.entity';
@@ -18,7 +20,7 @@ export class Order {
 
     @Column({
         type: 'enum',
-        enum: ['PENDING', 'PAID', 'CANCELLED'],
+        enum: ['PENDING', 'COMPLETED', 'CANCELLED'],
         default: 'PENDING',
     })
     status: string;
@@ -30,5 +32,11 @@ export class Order {
         cascade: true,
     })
     items: OrderItem[];
+
+    @CreateDateColumn() 
+    createdAt: Date; 
+
+    @UpdateDateColumn() 
+    updatedAt: Date;
 
 }
