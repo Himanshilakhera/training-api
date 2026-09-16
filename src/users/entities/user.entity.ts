@@ -4,6 +4,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Profile } from './profile.entity';
 
 @Entity('users')
@@ -15,8 +16,12 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ nullable: true })
   name: string;
+
+  @Column()
+  @Exclude()
+  password: string;
 
   @OneToOne(() => Profile, (profile) => profile.user, {
     cascade: true,
