@@ -1,29 +1,106 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { CreateProductDto } from './dto/create-product.dto';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-
-export interface Product {
-  id: number;
-  name: string;
-  description?: string;
-  price: number;
-  category: string;
-}
+import {
+  FilterProductsDto,
+  ProductSortBy,
+} from './dto/filter-products.dto';
+import { Category } from '../categories/entities/category.entity';
+import { Product } from './entities/product.entity';
 
 @Injectable()
 export class ProductsService {
+  constructor(
+    @InjectRepository(Product)
+    private readonly productsRepository: Repository<Product>,
+
+    @InjectRepository(Category)
+    private categoryRepository: Repository<Category>
+  ) { }
 
   private readonly logger = new Logger(ProductsService.name);
-  private products: Product[] = [];
-  private nextId: number = 1;
 
   /**
-   * Retrieve all products
-   * @returns Array of all products
+   * Retrieve filtered products with pagination.
    */
-  findAll(): Product[] {
-    return this.products;
+  async findAll(filter: FilterProductsDto): Promise<{
+    items: Product[];
+    meta: {
+      totalItems: number;
+      itemCount: number;
+      itemsPerPage: number;
+      totalPages: number;
+      currentPage: number;
+    };
+  }> {
+    const {
+      page,
+      limit,
+      search,
+      categoryId,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder,
+    } = filter;
+    const sortColumn: Record<ProductSortBy, string> = {
+      [ProductSortBy.PRICE]: 'product.price',
+      [ProductSortBy.CREATED_AT]: 'product.createdAt',
+      [ProductSortBy.NAME]: 'product.name',
+    };
+    const orderByColumn = sortColumn[sortBy];
+
+    if (!orderByColumn) {
+      throw new BadRequestException('Invalid sortBy value');
+    }
+
+    const queryBuilder = this.productsRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.category', 'category')
+
+    if (search) {
+      queryBuilder.andWhere(
+        '(LOWER(product.name) LIKE LOWER(:search) OR LOWER(product.description) LIKE LOWER(:search))',
+        { search: `%${search}%` },
+      );
+    }
+
+    if (categoryId) {
+      queryBuilder.andWhere('category.id = :categoryId', { categoryId });
+    }
+    if (minPrice !== undefined) {
+      queryBuilder.andWhere('product.price >= :minPrice', { minPrice });
+    }
+    if (maxPrice !== undefined) {
+      queryBuilder.andWhere('product.price <= :maxPrice', { maxPrice });
+    }
+
+    const [items, total] = await queryBuilder
+      .orderBy(orderByColumn, sortOrder)
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items,
+      meta: {
+        totalItems: total,
+        itemCount: items.length,
+        itemsPerPage: limit,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      },
+    };
   }
+
 
   /**
    * Retrieve a product by ID
@@ -31,8 +108,8 @@ export class ProductsService {
    * @returns The product object
    * @throws NotFoundException if product does not exist
    */
-  findOne(id: number): Product {
-    const product = this.products.find((p) => p.id === id);
+  async findOne(id: string): Promise<Product> {
+    const product = await this.productsRepository.findOneBy({ id });
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
@@ -44,26 +121,38 @@ export class ProductsService {
    * @param createProductDto - Product creation data
    * @returns The created product
    */
-  create(createProductDto: CreateProductDto): Product {
-
-    const existingProduct = this.products.find(
-      (product) =>
-        product.name.toLowerCase() ===
-        createProductDto.name.toLowerCase(),
-    );
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const existingProduct = await this.productsRepository.findOneBy({
+      name: createProductDto.name,
+    });
 
     if (existingProduct) {
       throw new ConflictException(
         `Product with name "${createProductDto.name}" already exists`,
       );
     }
-    const product: Product = {
-      id: this.nextId++,
-      ...createProductDto,
-    };
-    this.products.push(product);
-    this.logger.log(`Product created: ${product.name}`);
-    return product;
+    const { categoryId, ...productData } = createProductDto;
+
+    let category;
+
+    if (categoryId) {
+      category = await this.categoryRepository.findOne({
+        where: { id: categoryId },
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+    }
+
+    const product = this.productsRepository.create({
+      ...productData,
+      category: { id: categoryId },
+    });
+    const savedProduct = await this.productsRepository.save(product);
+
+    this.logger.log(`Product created: ${savedProduct.name}`);
+    return savedProduct;
   }
 
 
@@ -73,12 +162,20 @@ export class ProductsService {
  * @param updateProductDto - Product update data
  * @returns The updated product
  */
-  update(id: number, updateProductDto: UpdateProductDto): Product {
-    const product = this.findOne(id);
+  async update(
+    id: string,
+    updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    const product = await this.findOne(id);
 
-    Object.assign(product, updateProductDto);
+    const { categoryId, ...productData } = updateProductDto;
 
-    return product;
+    Object.assign(product, productData);
+    if (categoryId) {
+      product.category = { id: categoryId } as Category;
+    }
+
+    return this.productsRepository.save(product);
   }
 
 
@@ -87,12 +184,15 @@ export class ProductsService {
    * @param id - The product ID
    * @throws NotFoundException if product does not exist
    */
-  remove(id: number) {
-    const index = this.products.findIndex((p) => p.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+  async remove(id: string): Promise<{ message: string }> {
+    // const product = await this.findOne(id);
+
+    // await this.productsRepository.remove(product);
+    const result = await this.productsRepository.delete(id);
+
+    if (result.affected === 0) {
+      throw new NotFoundException('Product not found');
     }
-    this.products.splice(index, 1);
     this.logger.log(`Product deleted: ${id}`);
     return {
       message: 'Product deleted successfully',
