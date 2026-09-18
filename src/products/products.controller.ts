@@ -7,7 +7,11 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
+import { User } from '../users/entities/user.entity';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -16,7 +20,7 @@ import type { Product } from './entities/product.entity';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) { }
+  constructor(private readonly productsService: ProductsService) {}
 
   /**
    * Retrieve all products
@@ -46,10 +50,13 @@ export class ProductsController {
    * @returns The created product
    */
   @Post()
-  async create(@Body() createProductDto: CreateProductDto): Promise<Product> {
-    return this.productsService.create(createProductDto);
+  @UseGuards(JwtAuthGuard)
+  async create(
+    @Body() createProductDto: CreateProductDto,
+    @CurrentUser() user: Omit<User, 'password'>,
+  ): Promise<Product> {
+    return this.productsService.create(createProductDto, user.id);
   }
-
 
   @Patch(':id')
   update(

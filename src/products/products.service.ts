@@ -14,6 +14,7 @@ import {
   ProductSortBy,
 } from './dto/filter-products.dto';
 import { Category } from '../categories/entities/category.entity';
+import { User } from '../users/entities/user.entity';
 import { Product } from './entities/product.entity';
 
 @Injectable()
@@ -23,8 +24,8 @@ export class ProductsService {
     private readonly productsRepository: Repository<Product>,
 
     @InjectRepository(Category)
-    private categoryRepository: Repository<Category>
-  ) { }
+    private categoryRepository: Repository<Category>,
+  ) {}
 
   private readonly logger = new Logger(ProductsService.name);
 
@@ -64,7 +65,7 @@ export class ProductsService {
 
     const queryBuilder = this.productsRepository
       .createQueryBuilder('product')
-      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.category', 'category');
 
     if (search) {
       queryBuilder.andWhere(
@@ -101,7 +102,6 @@ export class ProductsService {
     };
   }
 
-
   /**
    * Retrieve a product by ID
    * @param id - The product ID
@@ -121,7 +121,10 @@ export class ProductsService {
    * @param createProductDto - Product creation data
    * @returns The created product
    */
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+  async create(
+    createProductDto: CreateProductDto,
+    userId?: string,
+  ): Promise<Product> {
     const existingProduct = await this.productsRepository.findOneBy({
       name: createProductDto.name,
     });
@@ -131,6 +134,7 @@ export class ProductsService {
         `Product with name "${createProductDto.name}" already exists`,
       );
     }
+
     const { categoryId, ...productData } = createProductDto;
 
     let category;
@@ -147,7 +151,8 @@ export class ProductsService {
 
     const product = this.productsRepository.create({
       ...productData,
-      category: { id: categoryId },
+      ...(categoryId ? { category: { id: categoryId } } : {}),
+      ...(userId ? { creator: { id: userId } as User } : {}),
     });
     const savedProduct = await this.productsRepository.save(product);
 
@@ -155,13 +160,12 @@ export class ProductsService {
     return savedProduct;
   }
 
-
   /**
- * Update a product by ID
- * @param id - The product ID
- * @param updateProductDto - Product update data
- * @returns The updated product
- */
+   * Update a product by ID
+   * @param id - The product ID
+   * @param updateProductDto - Product update data
+   * @returns The updated product
+   */
   async update(
     id: string,
     updateProductDto: UpdateProductDto,
@@ -178,16 +182,12 @@ export class ProductsService {
     return this.productsRepository.save(product);
   }
 
-
   /**
    * Remove a product by ID
    * @param id - The product ID
    * @throws NotFoundException if product does not exist
    */
   async remove(id: string): Promise<{ message: string }> {
-    // const product = await this.findOne(id);
-
-    // await this.productsRepository.remove(product);
     const result = await this.productsRepository.delete(id);
 
     if (result.affected === 0) {

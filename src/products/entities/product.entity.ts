@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Category } from '../../categories/entities/category.entity';
 import { OrderItem } from '../../orders/entities/order-item.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('products')
 export class Product {
@@ -29,11 +30,18 @@ export class Product {
   stock: number;
 
   @ManyToOne(() => Category, (category) => category.products, {
-  nullable: true,
-  onDelete: 'SET NULL',
+    nullable: true,
+    onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'category_id' })
   category: Category;
+
+  @ManyToOne(() => User, (user) => user.products, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'creator_id' })
+  creator: User;
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
   orderItems: OrderItem[];
