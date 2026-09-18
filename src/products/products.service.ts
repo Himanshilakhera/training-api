@@ -109,7 +109,11 @@ export class ProductsService {
    * @throws NotFoundException if product does not exist
    */
   async findOne(id: string): Promise<Product> {
-    const product = await this.productsRepository.findOneBy({ id });
+    const product = await this.productsRepository.findOne({
+      where: { id },
+      relations: { creator: true },
+    });
+
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }

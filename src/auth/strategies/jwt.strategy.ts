@@ -9,10 +9,12 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
 
 import { User } from '../../users/entities/user.entity';
+import { Role } from '../enums/role.enum';
 
 export interface JwtPayload {
   sub: string;
   email: string;
+  role: Role;
   iat?: number; //Issued At
   exp?: number;
 }
@@ -45,6 +47,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
     if (!user || isInactive) {
       throw new UnauthorizedException('User not found or inactive');
+    }
+
+    if (payload.role && user.role !== payload.role) {
+      throw new UnauthorizedException('Token role mismatch');
     }
 
     const { password, passwordHash, ...sanitizedUser } = user as User & {
