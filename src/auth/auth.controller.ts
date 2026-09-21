@@ -11,6 +11,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -18,11 +19,11 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
-    const user = await this.authService.register(registerDto);
+    const result = await this.authService.register(registerDto);
 
     return {
       message: 'Registration successful',
-      user,
+      ...result,
     };
   }
 
@@ -34,6 +35,28 @@ export class AuthController {
       message: 'Login successful',
       ...result,
     };
+  }
+
+  @Post('refresh')
+  @UseGuards(JwtRefreshGuard)
+  async refresh(
+    @CurrentUser() user: { sub: string; refreshToken: string },
+  ) {
+    const tokens = await this.authService.refreshTokens(
+      user.sub,
+      user.refreshToken,
+    );
+
+    return {
+      message: 'Token refreshed successfully',
+      ...tokens,
+    };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout(@CurrentUser() user: Omit<User, 'password'>) {
+    return this.authService.logout(user.id);
   }
 
   @Get('me')
