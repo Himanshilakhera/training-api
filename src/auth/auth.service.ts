@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '../users/entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { Role } from './enums/role.enum';
 
 @Injectable()
 export class AuthService {
@@ -41,6 +42,7 @@ export class AuthService {
     const user = this.userRepository.create({
       email,
       password: hashedPassword,
+      role: Role.CUSTOMER,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -75,6 +77,7 @@ export class AuthService {
   const payload = {
     sub: user.id,
     email: user.email,
+    role: user.role,
   };
 
   const accessToken = await this.jwtService.signAsync(payload);
