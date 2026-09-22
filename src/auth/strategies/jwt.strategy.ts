@@ -40,14 +40,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       id: payload.sub,
     });
 
-    const isInactive =
-      !!user &&
-      'isActive' in user &&
-      (user as User & { isActive?: boolean }).isActive === false;
-
-    if (!user || isInactive) {
-      throw new UnauthorizedException('User not found or inactive');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Your account has been deactivated');
+    }
+
 
     if (payload.role && user.role !== payload.role) {
       throw new UnauthorizedException('Token role mismatch');

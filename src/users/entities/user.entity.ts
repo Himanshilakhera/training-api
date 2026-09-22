@@ -1,9 +1,11 @@
 import {
   Column,
+  CreateDateColumn,
   Entity,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Product } from '../../products/entities/product.entity';
@@ -36,7 +38,17 @@ export class User {
     type: 'varchar',
     nullable: true,
   })
+  @Exclude()
   currentHashedRefreshToken: string | null;
+
+  @Column({ default: true })
+  isActive: boolean;
+
+  @CreateDateColumn({ type: 'datetime' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'datetime' })
+  updatedAt: Date;
 
   @OneToMany(() => Product, (product) => product.creator)
   products: Product[];
