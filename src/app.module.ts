@@ -29,10 +29,15 @@ import { AuthModule } from './auth/auth.module';
         DB_USERNAME: Joi.string().required(),
         DB_PASSWORD: Joi.string().required(),
         DB_NAME: Joi.string().required(),
+
+        JWT_ACCESS_SECRET: Joi.string().required(),
+        JWT_REFRESH_SECRET: Joi.string().required(),
+        JWT_ACCESS_EXPIRATION: Joi.string().default('15m'),
+        JWT_REFRESH_EXPIRATION: Joi.string().default('7d'),
       }),
     }),
 
-  TypeOrmModule.forRootAsync({
+    TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -45,8 +50,8 @@ import { AuthModule } from './auth/auth.module';
 
         autoLoadEntities: true,
         // synchronize: configService.get<string>('NODE_ENV') !== 'production',
-         synchronize: false,
-         logging: ['query', 'error'],
+        synchronize: false,
+        logging: ['query', 'error'],
       }),
     }),
 

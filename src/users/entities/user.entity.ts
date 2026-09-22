@@ -32,6 +32,12 @@ export class User {
   })
   role: Role;
 
+  @Column({
+    type: 'varchar',
+    nullable: true,
+  })
+  currentHashedRefreshToken: string | null;
+
   @OneToMany(() => Product, (product) => product.creator)
   products: Product[];
 
