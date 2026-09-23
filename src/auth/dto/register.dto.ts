@@ -1,7 +1,9 @@
 import { Transform } from 'class-transformer';
 import {
+	IsBoolean,
 	IsEmail,
 	IsNotEmpty,
+	IsOptional,
 	IsString,
 	Matches,
 	MinLength,
@@ -23,4 +25,13 @@ export class RegisterDto {
 			'password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (@$!%*?&#)',
 	})
 	password: string;
+
+	@Transform(({ value }) => {
+		if (value === 'true') return true;
+		if (value === 'false') return false;
+		return value;
+	})
+	@IsOptional()
+	@IsBoolean({ message: 'isApprovedVendor must be a boolean value' })
+	isApprovedVendor?: boolean;
 }

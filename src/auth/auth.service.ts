@@ -133,7 +133,7 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const { email, password } = registerDto;
+    const { email, password, isApprovedVendor } = registerDto;
 
     const existingUser = await this.userRepository.findOne({
       where: { email },
@@ -150,7 +150,7 @@ export class AuthService {
     const user = this.userRepository.create({
       email,
       password: hashedPassword,
-      role: Role.CUSTOMER,
+      role: isApprovedVendor === true ? Role.VENDOR : Role.CUSTOMER,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -182,6 +182,10 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Your account has been deactivated');
     }
 
     const tokens = await this.generateTokens(

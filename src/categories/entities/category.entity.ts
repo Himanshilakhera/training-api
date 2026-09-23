@@ -1,8 +1,10 @@
 import {
     Column,
+    CreateDateColumn,
     Entity,
     OneToMany,
     PrimaryGeneratedColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { Product } from '../../products/entities/product.entity';
 
@@ -19,4 +21,13 @@ export class Category {
 
     @OneToMany(() => Product, (product) => product.category)
     products: Product[];
+
+    @CreateDateColumn({ type: 'datetime' })
+    createdAt: Date;
+
+    @UpdateDateColumn({ type: 'datetime' })
+    updatedAt: Date;
+
+    @Column({ type: 'varchar', length: 255, unique: true })
+    slug: string;
 }

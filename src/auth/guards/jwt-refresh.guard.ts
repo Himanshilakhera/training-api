@@ -27,7 +27,11 @@ export class JwtRefreshGuard extends AuthGuard('jwt-refresh') {
       throw new UnauthorizedException('Invalid token');
     }
 
-    if (err || !user) {
+    if (err) {
+      throw err;
+    }
+
+    if (!user) {
       throw new UnauthorizedException('Unauthorized');
     }
 

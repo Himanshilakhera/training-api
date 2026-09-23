@@ -4,10 +4,11 @@ import { ProductsController } from './products.controller';
 import { ProductsService } from './products.service';
 import { Product } from './entities/product.entity';
 import { Category } from '../categories/entities/category.entity';
+import { OwnershipGuard } from '../common/guards/ownership.guard';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Product, Category])],
   controllers: [ProductsController],
-  providers: [ProductsService]
+  providers: [ProductsService, OwnershipGuard],
 })
-export class ProductsModule { }
+export class ProductsModule {}
