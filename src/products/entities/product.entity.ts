@@ -11,6 +11,7 @@ import {
 import { Category } from '../../categories/entities/category.entity';
 import { OrderItem } from '../../orders/entities/order-item.entity';
 import { User } from '../../users/entities/user.entity';
+import { ApiHideProperty } from '@nestjs/swagger';
 
 @Entity('products')
 export class Product {
@@ -29,6 +30,7 @@ export class Product {
   @Column({ type: 'int', unsigned: true, default: 0 })
   stock: number;
 
+  @ApiHideProperty()
   @ManyToOne(() => Category, (category) => category.products, {
     nullable: true,
     onDelete: 'SET NULL',
@@ -36,6 +38,7 @@ export class Product {
   @JoinColumn({ name: 'category_id' })
   category: Category;
 
+  @ApiHideProperty()
   @ManyToOne(() => User, (user) => user.products, {
     nullable: true,
     onDelete: 'SET NULL',
@@ -43,6 +46,7 @@ export class Product {
   @JoinColumn({ name: 'creator_id' })
   creator: User;
 
+  @ApiHideProperty()
   @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
   orderItems: OrderItem[];
 

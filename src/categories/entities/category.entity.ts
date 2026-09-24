@@ -7,6 +7,7 @@ import {
     UpdateDateColumn,
 } from 'typeorm';
 import { Product } from '../../products/entities/product.entity';
+import { ApiHideProperty } from '@nestjs/swagger';
 
 @Entity('categories')
 export class Category {
@@ -19,6 +20,7 @@ export class Category {
     @Column({ type: 'varchar', length: 255, nullable: true })
     description: string;
 
+    @ApiHideProperty()
     @OneToMany(() => Product, (product) => product.category)
     products: Product[];
 

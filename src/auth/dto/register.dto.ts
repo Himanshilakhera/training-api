@@ -1,4 +1,5 @@
 import { Transform } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	IsBoolean,
 	IsEmail,
@@ -10,6 +11,11 @@ import {
 } from 'class-validator';
 
 export class RegisterDto {
+	@ApiProperty({
+		description: 'User email address. It must be a valid email format.',
+		example: 'john.doe@example.com',
+		format: 'email',
+	})
 	@Transform(({ value }) =>
 		typeof value === 'string' ? value.trim().toLowerCase() : value,
 	)
@@ -17,6 +23,13 @@ export class RegisterDto {
 	@IsNotEmpty()
 	email: string;
 
+	@ApiProperty({
+		description:
+			'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character from @$!%*?&#.',
+		example: 'SecurePass1@',
+		minLength: 8,
+		pattern: '^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@$!%*?&#]).+$',
+	})
 	@IsString()
 	@IsNotEmpty()
 	@MinLength(8)
@@ -26,6 +39,11 @@ export class RegisterDto {
 	})
 	password: string;
 
+	@ApiPropertyOptional({
+		description: 'Whether the user should be registered as a vendor. When omitted or set to false, the user is registered with the CUSTOMER role.',
+		example: true,
+		type: Boolean,
+	})
 	@Transform(({ value }) => {
 		if (value === 'true') return true;
 		if (value === 'false') return false;
